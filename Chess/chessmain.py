@@ -35,13 +35,15 @@ def draw_board(screen):
             )
 
 
-def draw_pieces(screen,board):
+def draw_pieces(screen, board):
     for row in range(DIMENSION):
         for col in range(DIMENSION):
             piece = board[row][col]
-            if piece!='--':
-                screen.blit(IMAGES[piece],p.Rect(col*SQ_SIZE,row*SQ_SIZE,SQ_SIZE,SQ_SIZE))
-
+            if piece != "--":
+                screen.blit(
+                    IMAGES[piece],
+                    p.Rect(col * SQ_SIZE, row * SQ_SIZE, SQ_SIZE, SQ_SIZE),
+                )
 
 
 def draw_game_state(screen, game_state):
@@ -59,29 +61,31 @@ def main():
     move_made = False
     load_images()
     running = True
-    sq_selected = () # No square is selected in the beginning
-    player_clicks = [] # Keep track of player clicks [(row,col),(row,col)] only 2 tuples: source and destination
+    sq_selected = ()  # No square is selected in the beginning
+    player_clicks = (
+        []
+    )  # Keep track of player clicks [(row,col),(row,col)] only 2 tuples: source and destination
     while running:
         for e in p.event.get():
             if e.type == p.QUIT:
                 running = False
             elif e.type == p.MOUSEBUTTONDOWN:
-                location  = p.mouse.get_pos() # location of mouse click
-                col = location[0]//SQ_SIZE
-                row = location[1]//SQ_SIZE
-                
-                #* Player clicked on the same piece twice, might wanna add undo highlighting here
-                if sq_selected == (row,col):
+                location = p.mouse.get_pos()  # location of mouse click
+                col = location[0] // SQ_SIZE
+                row = location[1] // SQ_SIZE
+
+                # * Player clicked on the same piece twice, might wanna add undo highlighting here
+                if sq_selected == (row, col):
                     sq_selected = ()
                     player_clicks = []
                 else:
-                    sq_selected = (row,col)
+                    sq_selected = (row, col)
                     player_clicks.append(sq_selected)
 
-                if len(player_clicks)==2:
+                if len(player_clicks) == 2:
                     # This is the destination click
                     # move from player_clicks[0] to player_clicks[1]
-                    move = Move(player_clicks[0],player_clicks[1],game_state.board)
+                    move = Move(player_clicks[0], player_clicks[1], game_state.board)
                     if move in valid_moves:
                         print(move.get_chess_notation())
                         game_state.make_move(move)
@@ -89,14 +93,15 @@ def main():
                         player_clicks = []
                         move_made = True
                     else:
-                        print('Invalid Move')
+                        player_clicks = [sq_selected]  # Selected another piece
+                        print("Invalid Move")
 
-            elif e.type==p.KEYDOWN:
+            elif e.type == p.KEYDOWN:
                 # Undo when 'z' is pressed
                 if e.key == p.K_z:
                     game_state.undo_move()
                     move_made = True
-                    
+
         if move_made:
             valid_moves = game_state.get_valid_moves()
             move_made = False
