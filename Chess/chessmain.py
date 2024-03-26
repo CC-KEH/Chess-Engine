@@ -1,12 +1,12 @@
 import pygame as p
-from Chess.chess_engine import *
+from chess_engine import *
 
 """
 This is main driver file, responsible for handling user input and displaying current GameState object.
 """
 
 
-WIDTH = HEIGHT = 512
+WIDTH = HEIGHT = 720
 DIMENSION = 8
 SQ_SIZE = HEIGHT // DIMENSION
 MAX_FPS = 15
