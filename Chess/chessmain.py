@@ -86,13 +86,14 @@ def main():
                     # This is the destination click
                     # move from player_clicks[0] to player_clicks[1]
                     move = Move(player_clicks[0], player_clicks[1], game_state.board)
-                    if move in valid_moves:
-                        print(move.get_chess_notation())
-                        game_state.make_move(move)
-                        sq_selected = ()
-                        player_clicks = []
-                        move_made = True
-                    else:
+                    print(move.get_chess_notation())
+                    for i in range(len(valid_moves)):
+                        if move == valid_moves[i]:
+                            game_state.make_move(valid_moves[i])
+                            sq_selected = ()
+                            player_clicks = []
+                            move_made = True
+                    if not move_made:
                         player_clicks = [sq_selected]  # Selected another piece
                         print("Invalid Move")
 
