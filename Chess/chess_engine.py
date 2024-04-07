@@ -26,7 +26,8 @@ class GameState:
         self.white_king_location = (7, 4)
         self.black_king_location = (0, 4)
         self.in_check = False
-        self.in_state_mate = False
+        self.in_stale_mate = False
+        self.in_check_mate = False
         self.pins = []
         self.checks = []
         self.current_castle_right = CastleRights(True, True, True, True)
@@ -170,7 +171,7 @@ class GameState:
             if self.is_in_check():
                 self.in_check_mate = True
             else:
-                self.in_state_mate = True
+                self.in_stale_mate = True
 
         self.empassant_possible = temp_empassant_possible
         self.current_castle_right = temp_castle_rights
@@ -391,8 +392,6 @@ class GameState:
                 else:
                     break
 
-    def castle(self, moves):
-        pass
 
     def get_knight_moves(self, r, c, moves):
         piece_pinned = False
@@ -499,8 +498,7 @@ class GameState:
                         self.white_king_location = (r, c)
                     else:
                         self.black_king_location = (r, c)
-        
-            
+                  
     def get_castle_moves(self,r,c,moves):
         if self.square_under_attack(r,c):
             return
