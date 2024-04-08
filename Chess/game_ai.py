@@ -32,7 +32,7 @@ def score_board(game_state:GameState):
         for square in row:
             if square[0]=='w':
                 score+=piece_scores[square[1]]
-            else:
+            elif square[0]=='b':
                 score-=piece_scores[square[1]]
     return score
 

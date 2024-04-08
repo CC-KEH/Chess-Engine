@@ -7,7 +7,8 @@ This is main driver file, responsible for handling user input and displaying cur
 """
 
 
-WIDTH = HEIGHT = 720
+BOARD_WIDTH = HEIGHT = 720
+MOVE_LOGS_WIDTH = 250
 DIMENSION = 8
 SQ_SIZE = HEIGHT // DIMENSION
 MAX_FPS = 15
@@ -59,11 +60,11 @@ def highlight_squares(screen,game_state,valid_moves,sq_selected):
             if move.src_row==r and move.src_col==c:
                 screen.blit(s,(move.dst_col*SQ_SIZE,move.dst_row*SQ_SIZE))
 
-def draw_game_state(screen, game_state,valid_moves,sq_selected):
+def draw_game_state(screen, game_state,valid_moves,sq_selected,move_log_font):
     draw_board(screen)
     if sq_selected: highlight_squares(screen,game_state,valid_moves,sq_selected)
     draw_pieces(screen, game_state.board)
-
+    draw_move_log(screen,game_state,move_log_font)
 
 def animate_move(move,screen,board,clock):
     global colors
@@ -80,7 +81,10 @@ def animate_move(move,screen,board,clock):
         end_square = p.Rect(move.dst_col*SQ_SIZE,move.dst_row*SQ_SIZE,SQ_SIZE,SQ_SIZE)
         p.draw.rect(screen,color,end_square)
         if move.piece_captured !='--':
-            screen.blit(IMAGES[move.piece_captured],end_square)
+            if move.is_enpassant_move:
+                enpassant_row = move.end_row + 1 if move.piece_captured[0] == 'b' else move.end_row - 1
+                end_square = p.Rect(move.end_col * SQ_SIZE, enpassant_row * SQ_SIZE, SQ_SIZE, SQ_SIZE)
+            screen.blit(IMAGES[move.piece_captured], end_square)
         screen.blit(IMAGES[move.piece_moved],p.Rect(temp_c*SQ_SIZE,temp_r*SQ_SIZE,SQ_SIZE,SQ_SIZE))
         p.display.flip()
         clock.tick(60)
@@ -88,14 +92,33 @@ def animate_move(move,screen,board,clock):
 def draw_text(screen,text):
     font = p.font.SysFont('Helvitca',32,True,False)
     text_object = font.render(text,0,p.Color('Black'))
-    text_location = p.Rect(0,0,WIDTH,HEIGHT).move(WIDTH/2 - text_object.get_width()/2,HEIGHT/2-text_object.get_height()/2)
+    text_location = p.Rect(0,0,BOARD_WIDTH,HEIGHT).move(BOARD_WIDTH/2 - text_object.get_width()/2,HEIGHT/2-text_object.get_height()/2)
     screen.blit(text_object,text_location)
-    
+
+def draw_move_log(screen,game_state,font):
+    move_log_rect = p.Rect(BOARD_WIDTH,0,MOVE_LOGS_WIDTH,HEIGHT)
+    p.draw.rect(screen,p.Color('black'),move_log_rect)
+    move_log = game_state.move_log
+    move_texts = move_log
+    padding = 5
+    text_Y = padding
+    lin_spacing = 2
+    for i in range(len(move_texts)):
+        move_no_str = i+1
+        move = move_texts[i].get_chess_notation()
+        text = str(move_no_str)+". " + str(move)
+        text_object = font.render(text,True,p.Color('white'))
+        text_location = move_log_rect.move(padding,text_Y)
+        screen.blit(text_object,text_location)
+        text_Y+=text_object.get_height() + lin_spacing
+
+
 def main():
     p.init()
-    screen = p.display.set_mode((WIDTH, HEIGHT))
+    screen = p.display.set_mode((BOARD_WIDTH+MOVE_LOGS_WIDTH, HEIGHT))
     clock = p.time.Clock()
     screen.fill(p.Color("white"))
+    move_log_font = p.font.SysFont('Helvitca',25,False,False)
     game_state = GameState()
     valid_moves = game_state.get_valid_moves()
     move_made = False
@@ -107,6 +130,7 @@ def main():
     game_over = False
     player_one = False
     player_two = True
+    # ai_thinking = False
     while running:
         human_turn = (game_state.white_to_move and player_one) or (game_state.white_to_move and player_two)
         
@@ -118,9 +142,8 @@ def main():
                     location = p.mouse.get_pos()  # location of mouse click
                     col = location[0] // SQ_SIZE
                     row = location[1] // SQ_SIZE
-
                     # * Player clicked on the same piece twice, might wanna add undo highlighting here
-                    if sq_selected == (row, col):
+                    if sq_selected == (row, col) or col>=8:
                         sq_selected = ()
                         player_clicks = []
                     else:
@@ -149,7 +172,9 @@ def main():
                     game_state.undo_move()
                     move_made = True 
                     animate = False
-                    
+                    # if ai_thinking:
+                        # terminate()
+                        # ai_thinking = False
                 if e.key == p.K_r: # Reset Game
                     game_state = GameState()   
                     sq_selected = ()
@@ -157,8 +182,13 @@ def main():
                     move_made = False
                     animate = False
                     game_over = False
-        
-        if not game_over and not human_turn:
+                    # if ai_thinking:
+                        # terminate()
+                        # ai_thinking = False
+                    move_undone = True
+        if not game_over and not human_turn and not move_undone:
+            # if not ai_thinking:
+            # ai_thinking = True
             ai_move = find_best_move(game_state,valid_moves)
             if ai_move is None:
                 ai_move = random_move(valid_moves)
@@ -172,8 +202,9 @@ def main():
             valid_moves = game_state.get_valid_moves()
             move_made = False
             animate = False
+            move_undone = False
             
-        draw_game_state(screen, game_state, valid_moves, sq_selected)
+        draw_game_state(screen, game_state, valid_moves, sq_selected,move_log_font)
         
         if game_state.in_check_mate:
             game_over = True
