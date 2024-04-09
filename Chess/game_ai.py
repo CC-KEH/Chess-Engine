@@ -1,6 +1,8 @@
 import random
+import re
 from shutil import move
 from chess_engine import GameState
+from multiprocessing import Queue
 
 piece_scores={'K': 0,'P': 1,'R': 5,'N': 3,'B': 3,'Q': 10}
 CHECKMATE = 1000
@@ -40,7 +42,7 @@ def random_move(valid_moves):
     return valid_moves[random.randint(0,len(valid_moves)-1)]
 
 # main move function
-def find_best_move(game_state:GameState,valid_moves,nega_max = True):
+def find_best_move(game_state:GameState,valid_moves,thread_storage,nega_max = True):
     global next_move
     next_move = None
     random.shuffle(valid_moves)
@@ -48,8 +50,8 @@ def find_best_move(game_state:GameState,valid_moves,nega_max = True):
         find_move_min_max(game_state,valid_moves,DEPTH, game_state.white_to_move)
     else:
         find_move_nega_max_alpha_beta(game_state,valid_moves,DEPTH,-CHECKMATE,CHECKMATE, 1 if game_state.white_to_move else -1)
-        
-    return next_move
+    
+    thread_storage.put(next_move)
 
 # Min Max
 def find_move_min_max(game_state:GameState,valid_moves,depth,white_to_move):

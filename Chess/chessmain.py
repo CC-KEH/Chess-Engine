@@ -1,7 +1,9 @@
+from concurrent.futures import thread
 import glob
 import pygame as p
 from chess_engine import *
 from game_ai import find_best_move,random_move
+from multiprocessing import Process,Queue
 """
 This is main driver file, responsible for handling user input and displaying current GameState object.
 """
@@ -87,7 +89,7 @@ def animate_move(move,screen,board,clock):
             screen.blit(IMAGES[move.piece_captured], end_square)
         screen.blit(IMAGES[move.piece_moved],p.Rect(temp_c*SQ_SIZE,temp_r*SQ_SIZE,SQ_SIZE,SQ_SIZE))
         p.display.flip()
-        clock.tick(60)
+        clock.tick(100)
 
 def draw_text(screen,text):
     font = p.font.SysFont('Helvitca',32,True,False)
@@ -130,7 +132,9 @@ def main():
     game_over = False
     player_one = False
     player_two = True
-    # ai_thinking = False
+    ai_thinking = False
+    move_finder_process = None
+    move_undone = False
     while running:
         human_turn = (game_state.white_to_move and player_one) or (game_state.white_to_move and player_two)
         
@@ -138,7 +142,7 @@ def main():
             if e.type == p.QUIT:
                 running = False
             elif e.type == p.MOUSEBUTTONDOWN:
-                if not game_over and human_turn:
+                if not game_over:
                     location = p.mouse.get_pos()  # location of mouse click
                     col = location[0] // SQ_SIZE
                     row = location[1] // SQ_SIZE
@@ -150,7 +154,7 @@ def main():
                         sq_selected = (row, col)
                         player_clicks.append(sq_selected)
 
-                    if len(player_clicks) == 2:
+                    if len(player_clicks) == 2  and human_turn:
                         # This is the destination click
                         # move from player_clicks[0] to player_clicks[1]
                         move = Move(player_clicks[0], player_clicks[1], game_state.board)
@@ -172,9 +176,10 @@ def main():
                     game_state.undo_move()
                     move_made = True 
                     animate = False
-                    # if ai_thinking:
-                        # terminate()
-                        # ai_thinking = False
+                    if ai_thinking:
+                        move_finder_process.terminate()
+                        ai_thinking = False
+                    move_undone = True
                 if e.key == p.K_r: # Reset Game
                     game_state = GameState()   
                     sq_selected = ()
@@ -182,19 +187,29 @@ def main():
                     move_made = False
                     animate = False
                     game_over = False
-                    # if ai_thinking:
-                        # terminate()
-                        # ai_thinking = False
+                    if ai_thinking:
+                        move_finder_process.terminate()
+                        ai_thinking = False
                     move_undone = True
+        # AI Move  
         if not game_over and not human_turn and not move_undone:
-            # if not ai_thinking:
-            # ai_thinking = True
-            ai_move = find_best_move(game_state,valid_moves)
-            if ai_move is None:
-                ai_move = random_move(valid_moves)
-            game_state.make_move(ai_move)
-            move_made = True
-            animate = True
+            if not ai_thinking:
+                ai_thinking = True
+                thread_storage = Queue()
+                move_finder_process = Process(target=find_best_move,args=(game_state,valid_moves,thread_storage))
+                move_finder_process.start()
+                ai_move = thread_storage.get()
+                print(ai_move)
+                
+                               
+            if move_finder_process.is_alive:
+                if ai_move is None:
+                    ai_move = random_move(valid_moves)
+                game_state.make_move(ai_move)
+                move_made = True
+                animate = True
+                ai_thinking = False
+            
             
         if move_made:
             if animate:
