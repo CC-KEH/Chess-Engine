@@ -10,12 +10,14 @@ This is main driver file, responsible for handling user input and displaying cur
 
 
 BOARD_WIDTH = HEIGHT = 720
-MOVE_LOGS_WIDTH = 250
+MOVE_LOGS_WIDTH = 300
+MOVE_LOGS_HEIGHT = 270
 DIMENSION = 8
 SQ_SIZE = HEIGHT // DIMENSION
 MAX_FPS = 15
 IMAGES = {}
-
+WHITE_COLOR  = (245, 235, 218)
+BLACK_COLOR  = (105, 79, 71)
 
 def load_images():
     """
@@ -27,11 +29,9 @@ def load_images():
             p.image.load("images/" + piece + ".png"), (SQ_SIZE, SQ_SIZE)
         )
 
-
 def draw_board(screen):
     global colors
-    colors = [p.Color("white"), p.Color("gray")]
-
+    colors = [p.Color(245, 235, 218), p.Color(105, 79, 71)]
     for row in range(DIMENSION):
         for col in range(DIMENSION):
             color = colors[((row + col) % 2)]
@@ -39,17 +39,26 @@ def draw_board(screen):
                 screen, color, p.Rect(col * SQ_SIZE, row * SQ_SIZE, SQ_SIZE, SQ_SIZE)
             )
 
-
-def draw_pieces(screen, board):
-    for row in range(DIMENSION):
-        for col in range(DIMENSION):
-            piece = board[row][col]
-            if piece != "--":
-                screen.blit(
-                    IMAGES[piece],
-                    p.Rect(col * SQ_SIZE, row * SQ_SIZE, SQ_SIZE, SQ_SIZE),
-                )
-
+def draw_pieces(screen, board, for_white=True):
+    if for_white:
+        for row in range(DIMENSION):
+            for col in range(DIMENSION):
+                piece = board[row][col]
+                if piece != "--":
+                    screen.blit(
+                        IMAGES[piece],
+                        p.Rect(col * SQ_SIZE, row * SQ_SIZE, SQ_SIZE, SQ_SIZE),
+                    )
+    else:
+        for row in range(DIMENSION-1,-1,-1):
+            for col in range(DIMENSION-1,-1,-1):
+                piece = board[row][col]
+                if piece != "--":
+                    screen.blit(
+                        IMAGES[piece],
+                        p.Rect(col * SQ_SIZE, row * SQ_SIZE, SQ_SIZE, SQ_SIZE),
+                    )
+                    
 def highlight_squares(screen,game_state,valid_moves,sq_selected):
     r,c = sq_selected
     if game_state.board[r][c][0]==('w' if game_state.white_to_move else 'b'):
@@ -62,15 +71,17 @@ def highlight_squares(screen,game_state,valid_moves,sq_selected):
             if move.src_row==r and move.src_col==c:
                 screen.blit(s,(move.dst_col*SQ_SIZE,move.dst_row*SQ_SIZE))
 
-def draw_game_state(screen, game_state,valid_moves,sq_selected,move_log_font):
+def draw_game_state(screen, game_state,valid_moves,sq_selected,move_log_font,for_white=True):
     draw_board(screen)
     if sq_selected: highlight_squares(screen,game_state,valid_moves,sq_selected)
-    draw_pieces(screen, game_state.board)
+    draw_pieces(screen, game_state.board,game_state.white_to_move)
     draw_move_log(screen,game_state,move_log_font)
+    draw_menu(screen)
 
-def animate_move(move,screen,board,clock):
+def animate_move(game_state,screen,board,clock):
     global colors
     coords = [] # list of cords animation will move through
+    move = game_state.move_log[-1]
     dR = move.dst_row - move.src_row
     dC = move.dst_col - move.src_col
     frames_per_square = 10
@@ -78,7 +89,7 @@ def animate_move(move,screen,board,clock):
     for frame in range(frame_count+1):
         temp_r,temp_c = (move.src_row + dR*frame/frame_count,move.src_col + dC * frame/frame_count)
         draw_board(screen)
-        draw_pieces(screen,board)
+        draw_pieces(screen,board,game_state.white_to_move)
         color = colors[(move.dst_row+move.dst_col)%2]
         end_square = p.Rect(move.dst_col*SQ_SIZE,move.dst_row*SQ_SIZE,SQ_SIZE,SQ_SIZE)
         p.draw.rect(screen,color,end_square)
@@ -98,21 +109,55 @@ def draw_text(screen,text):
     screen.blit(text_object,text_location)
 
 def draw_move_log(screen,game_state,font):
-    move_log_rect = p.Rect(BOARD_WIDTH,0,MOVE_LOGS_WIDTH,HEIGHT)
-    p.draw.rect(screen,p.Color('black'),move_log_rect)
+    move_log_rect = p.Rect(BOARD_WIDTH,HEIGHT-MOVE_LOGS_HEIGHT,MOVE_LOGS_WIDTH,MOVE_LOGS_HEIGHT)
+    p.draw.rect(screen,p.Color(BLACK_COLOR),move_log_rect)
     move_log = game_state.move_log
     move_texts = move_log
-    padding = 5
-    text_Y = padding
-    lin_spacing = 2
+    padding = 20
+    text_X = padding
+    heading = "Move Logs"
+    text_object = font.render(heading,True,p.Color('white'))
+    text_location = move_log_rect.move(MOVE_LOGS_WIDTH/2 - text_object.get_width()/2,padding)
+    screen.blit(text_object,text_location)
+    text_X+=text_object.get_height()
     for i in range(len(move_texts)):
+        if text_X + font.get_height() >= MOVE_LOGS_WIDTH:
+            text_X = padding + font.get_height()
+            padding += 30
         move_no_str = i+1
         move = move_texts[i].get_chess_notation()
         text = str(move_no_str)+". " + str(move)
         text_object = font.render(text,True,p.Color('white'))
-        text_location = move_log_rect.move(padding,text_Y)
+        text_location = move_log_rect.move(text_X,padding+50)
         screen.blit(text_object,text_location)
-        text_Y+=text_object.get_height() + lin_spacing
+        text_X+=text_object.get_height() + 45
+
+def draw_menu(screen):
+    menu_rect = p.Rect(BOARD_WIDTH,0,MOVE_LOGS_WIDTH,HEIGHT-MOVE_LOGS_HEIGHT)
+    p.draw.rect(screen,p.Color(WHITE_COLOR),menu_rect)
+    heading_font = p.font.SysFont('Helvetica',30,True,False)
+    font = p.font.SysFont('Helvetica',20,True,False)
+    
+    text = "PyChess"
+    text_object = heading_font.render(text,True,p.Color(BLACK_COLOR))
+    text_location = menu_rect.move(MOVE_LOGS_WIDTH/2 - text_object.get_width()/2,20)
+    screen.blit(text_object,text_location)
+    text = "Press 'r' to reset game"
+    text_object = font.render(text,True,p.Color(BLACK_COLOR))
+    text_location = menu_rect.move(MOVE_LOGS_WIDTH/2 - text_object.get_width()/2 - 17,90)
+    screen.blit(text_object,text_location)
+    text = "Press 'z' to undo move"
+    text_object = font.render(text,True,p.Color(BLACK_COLOR))
+    text_location = menu_rect.move(MOVE_LOGS_WIDTH/2 - text_object.get_width()/2 - 17,130)
+    screen.blit(text_object,text_location)
+    text = "Press 'm' to switch modes"
+    text_object = font.render(text,True,p.Color(BLACK_COLOR))
+    text_location = menu_rect.move(MOVE_LOGS_WIDTH/2 - text_object.get_width()/2,170)
+    screen.blit(text_object,text_location)
+    text = "Press 's' to switch sides"
+    text_object = font.render(text,True,p.Color(BLACK_COLOR))
+    text_location = menu_rect.move(MOVE_LOGS_WIDTH/2 - text_object.get_width()/2 - 10,210)
+    screen.blit(text_object,text_location)
 
 
 def main():
@@ -130,13 +175,15 @@ def main():
     sq_selected = ()  # No square is selected in the beginning
     player_clicks = []  # Keep track of player clicks [(row,col),(row,col)] only 2 tuples: source and destination
     game_over = False
-    player_one = False
-    player_two = True
+    
+    player_one = True # Play as white
+    player_two = True # Play as black
+    
     ai_thinking = False
     move_finder_process = None
     move_undone = False
     while running:
-        human_turn = (game_state.white_to_move and player_one) or (game_state.white_to_move and player_two)
+        human_turn = (game_state.white_to_move and player_one) or (not game_state.white_to_move and player_two)
         
         for e in p.event.get():
             if e.type == p.QUIT:
@@ -154,7 +201,7 @@ def main():
                         sq_selected = (row, col)
                         player_clicks.append(sq_selected)
 
-                    if len(player_clicks) == 2  and human_turn:
+                    if len(player_clicks) == 2 and human_turn:
                         # This is the destination click
                         # move from player_clicks[0] to player_clicks[1]
                         move = Move(player_clicks[0], player_clicks[1], game_state.board)
@@ -169,6 +216,7 @@ def main():
                         if not move_made:
                             player_clicks = [sq_selected]  # Selected another piece
                             print("Invalid Move")
+                            
 
             elif e.type == p.KEYDOWN:
                 # Undo when 'z' is pressed
@@ -191,6 +239,40 @@ def main():
                         move_finder_process.terminate()
                         ai_thinking = False
                     move_undone = True
+                    
+                if e.key ==p.K_m:
+                    game_state = GameState()
+                    sq_selected = ()
+                    player_clicks = []
+                    move_made = False
+                    animate = False
+                    game_over = False
+                    player_one = True
+                    player_two = True
+                    if ai_thinking:
+                        move_finder_process.terminate()
+                        ai_thinking = False
+                    move_undone = True
+                    
+                    
+                if e.key == p.K_s:
+                    game_state = GameState()
+                    sq_selected = ()
+                    player_clicks = []
+                    move_made = False
+                    animate = False
+                    game_over = False
+                    player_one = not player_one
+                    player_two = not player_two
+                    if not player_one and not player_two:
+                        player_one = True
+                        
+                    if ai_thinking:
+                        move_finder_process.terminate()
+                        ai_thinking = False
+                    move_undone = True
+                    
+                
         # AI Move  
         if not game_over and not human_turn and not move_undone:
             if not ai_thinking:
@@ -213,13 +295,13 @@ def main():
             
         if move_made:
             if animate:
-                animate_move(game_state.move_log[-1],screen,game_state.board,clock)
+                animate_move(game_state,screen,game_state.board,clock)
             valid_moves = game_state.get_valid_moves()
             move_made = False
             animate = False
             move_undone = False
             
-        draw_game_state(screen, game_state, valid_moves, sq_selected,move_log_font)
+        draw_game_state(screen, game_state, valid_moves, sq_selected, move_log_font, game_state.white_to_move)
         
         if game_state.in_check_mate:
             game_over = True

@@ -421,8 +421,7 @@ class GameState:
                                 blocking_piece = True
                     if not attacking_piece or blocking_piece:
                         moves.append(Move((row, col), (row + move_amount, col + 1), self.board, is_enpassant_move=True))
-
-            
+     
     def get_rook_moves(self, r, c, moves):
         piece_pinned = False
         pin_direction = ()
@@ -591,7 +590,7 @@ class GameState:
                 
     def get_queen_side_castle_moves(self,r,c,moves):
         if self.board[r][c-1] == '--' and self.board[r][c-2] == '--' and self.board[r][c-3] == '--':
-            if not self.square_under_attack(r,c-1) and not self.square_under_attack(r,c-2) and not self.is_cell_under_attack(r,c-3):
+            if not self.square_under_attack(r,c-1) and not self.square_under_attack(r,c-2):
                 moves.append(Move((r,c),(r,c-2),self.board,is_castle_move=True))
              
 class CastleRights:
@@ -600,7 +599,6 @@ class CastleRights:
         self.bks = bks
         self.wqs = wqs
         self.bqs = bqs
-
 
 class Move:
     ranks_to_rows = {"1": 7, "2": 6, "3": 5, "4": 4, "5": 3, "6": 2, "7": 1, "8": 0}
